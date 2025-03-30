@@ -1,0 +1,9 @@
+node_modules
+.env
+.env.local
+src/components/chat/__tests__
+package-lock.json
+yarn.lock
+package.json
+assets
+public/placeholder-hotel.jpg
