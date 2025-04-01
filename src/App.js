@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ProfileProvider } from './context/ProfileContext';
 import Login from './components/auth/Login';
 import SearchAndFilter from './components/search/SearchAndFilter';
 import AccommodationList from './components/accommodation/AccommodationList';
@@ -74,44 +76,48 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <NavBar />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/accommodation/:id" element={<AccommodationDetail />} />
-          <Route
-            path="/"
-            element={
-              <div className="container mx-auto px-4 py-8">
-                <h1 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">
-                  Find Your Perfect Stay
-                </h1>
-                <SearchAndFilter 
-                  onSearch={handleSearch}
-                  onFilter={handleFilter}
-                  loading={loading}
-                />
-                {error && (
-                  <div className="text-red-500 mb-4">{error}</div>
-                )}
-                <AccommodationList 
-                  accommodations={searchResults}
-                  loading={loading}
-                  total={totalResults}
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                />
-                {totalResults > 0 && (
-                  <div className="text-center text-gray-600 dark:text-gray-400 mt-4">
-                    Showing {searchResults.length} of {totalResults} results
+      <AuthProvider>
+        <ProfileProvider>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <NavBar />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/chat" element={<ChatPage />} />
+              <Route path="/accommodation/:id" element={<AccommodationDetail />} />
+              <Route
+                path="/"
+                element={
+                  <div className="container mx-auto px-4 py-8">
+                    <h1 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">
+                      Find Your Perfect Stay
+                    </h1>
+                    <SearchAndFilter 
+                      onSearch={handleSearch}
+                      onFilter={handleFilter}
+                      loading={loading}
+                    />
+                    {error && (
+                      <div className="text-red-500 mb-4">{error}</div>
+                    )}
+                    <AccommodationList 
+                      accommodations={searchResults}
+                      loading={loading}
+                      total={totalResults}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                    {totalResults > 0 && (
+                      <div className="text-center text-gray-600 dark:text-gray-400 mt-4">
+                        Showing {searchResults.length} of {totalResults} results
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            }
-          />
-        </Routes>
-      </div>
+                }
+              />
+            </Routes>
+          </div>
+        </ProfileProvider>
+      </AuthProvider>
     </Router>
   );
 }
