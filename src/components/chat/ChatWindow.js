@@ -2,12 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
-import { Sun, Moon, Maximize2, Minimize2 } from 'lucide-react';
+
+const API_URL = 'http://localhost:8000';
 
 const ChatWindow = ({ isDarkMode, setIsDarkMode, className = '' }) => {
   const { token } = useAuth();
   const [messages, setMessages] = useState([]);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [preferences, setPreferences] = useState({
     routePreference: 'time',
     accessibilityRequired: false,
@@ -36,7 +36,7 @@ const ChatWindow = ({ isDarkMode, setIsDarkMode, className = '' }) => {
     setMessages(prev => [...prev, userMessage]);
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -47,6 +47,10 @@ const ChatWindow = ({ isDarkMode, setIsDarkMode, className = '' }) => {
           preferences
         })
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const data = await response.json();
       
@@ -85,31 +89,15 @@ const ChatWindow = ({ isDarkMode, setIsDarkMode, className = '' }) => {
 
   return (
     <div 
-      className={`${className} fixed bottom-4 right-4 w-96 ${isExpanded ? 'h-[80vh]' : 'h-[500px]'} bg-white dark:bg-gray-800 rounded-lg shadow-lg flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isDarkMode ? 'dark' : ''}`}
+      className={`${className} fixed bottom-1/2 right-1/2 transform translate-x-1/2 translate-y-1/2 w-[80vw] max-w-[1200px] h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-lg flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isDarkMode ? 'dark' : ''}`}
     >
       {/* Header */}
       <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat with Travel Assistant</h2>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-            aria-label={isExpanded ? 'Minimize chat' : 'Expand chat'}
-          >
-            {isExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-          </button>
-        </div>
       </div>
 
       {/* Messages */}
-      <div className={`flex-1 p-4 overflow-y-auto ${isExpanded ? 'h-[calc(100vh-16rem)]' : ''}`}>
+      <div className="flex-1 p-4 overflow-y-auto">
         {messages.map(message => (
           <ChatMessage
             key={message.id}
