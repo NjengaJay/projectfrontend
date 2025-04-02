@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import Login from './Login';
 import Register from './Register';
 import { Toaster } from 'react-hot-toast';
@@ -34,11 +34,6 @@ const AuthLayout = () => {
     const newDirection = page < newPage ? 1 : -1;
     setPage([newPage, newDirection]);
     setIsLogin(!isLogin);
-  };
-
-  const handleAuthSuccess = (data) => {
-    authLogin(data.token);
-    navigate('/');
   };
 
   return (
@@ -94,7 +89,6 @@ const AuthLayout = () => {
                 >
                   <Login
                     onToggleForm={toggleForm}
-                    onLoginSuccess={handleAuthSuccess}
                   />
                 </motion.div>
               ) : (
@@ -112,7 +106,6 @@ const AuthLayout = () => {
                 >
                   <Register
                     onToggleForm={toggleForm}
-                    onRegisterSuccess={handleAuthSuccess}
                   />
                 </motion.div>
               )}

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import axios from 'axios';
-import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
+import { EyeIcon, EyeOffIcon } from 'lucide-react';
 
-const Login = ({ onToggleForm, onLoginSuccess }) => {
+const Login = ({ onToggleForm }) => {
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -50,19 +50,14 @@ const Login = ({ onToggleForm, onLoginSuccess }) => {
     }
 
     setIsLoading(true);
+    
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/login', formData);
-      
-      if (response.data.token) {
-        toast.success('Login successful!');
-        onLoginSuccess?.(response.data);
+      const result = await login(formData);
+      if (!result.success) {
+        throw new Error(result.error || 'Login failed');
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed. Please try again.';
-      toast.error(message);
-      if (error.response?.status === 401) {
-        setErrors({ password: 'Invalid email or password' });
-      }
+      console.error('Login error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -98,34 +93,36 @@ const Login = ({ onToggleForm, onLoginSuccess }) => {
         </div>
 
         <div className="relative">
-          <input
-            type={showPassword ? 'text' : 'password'}
-            name="password"
-            id="password"
-            value={formData.password}
-            onChange={handleChange}
-            className={`block w-full px-4 py-3 bg-dark-lighter text-white rounded-lg focus:ring-2 focus:ring-primary border-transparent focus:border-transparent ${
-              errors.password ? 'ring-2 ring-red-500' : ''
-            }`}
-            placeholder=" "
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              id="password"
+              value={formData.password}
+              onChange={handleChange}
+              className={`block w-full px-3 py-2 bg-dark-lighter border border-dark-border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent pr-10 ${
+                errors.password ? 'ring-2 ring-red-500' : ''
+              }`}
+              placeholder=" "
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 text-gray-400 hover:text-white"
+            >
+              {showPassword ? (
+                <EyeOffIcon className="h-5 w-5" />
+              ) : (
+                <EyeIcon className="h-5 w-5" />
+              )}
+            </button>
+          </div>
           <label
             htmlFor="password"
             className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-dark-lighter px-2 peer-focus:px-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 left-1"
           >
             Password
           </label>
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-          >
-            {showPassword ? (
-              <EyeSlashIcon className="h-5 w-5" />
-            ) : (
-              <EyeIcon className="h-5 w-5" />
-            )}
-          </button>
           {errors.password && (
             <p className="mt-1 text-sm text-red-500">{errors.password}</p>
           )}

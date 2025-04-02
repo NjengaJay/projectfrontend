@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { ProfileProvider } from './context/ProfileContext';
-import Login from './components/auth/Login';
+import AuthLayout from './components/auth/AuthLayout';
 import SearchAndFilter from './components/search/SearchAndFilter';
 import AccommodationList from './components/accommodation/AccommodationList';
 import AccommodationDetail from './components/accommodation/AccommodationDetail';
@@ -81,7 +81,7 @@ function App() {
           <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <NavBar />
             <Routes>
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<AuthLayout />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/accommodation/:id" element={<AccommodationDetail />} />
               <Route

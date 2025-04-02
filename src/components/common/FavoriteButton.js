@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE_URL } from '../../config';
 
 const FavoriteButton = ({ itemId, itemType, initialIsFavorite = false, onFavoriteChange, className = '' }) => {

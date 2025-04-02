@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import axios from 'axios';
-import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
+import { EyeIcon, EyeOffIcon } from 'lucide-react';
 
-const Register = ({ onToggleForm, onRegisterSuccess }) => {
+const Register = ({ onToggleForm }) => {
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
+    confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -30,49 +32,53 @@ const Register = ({ onToggleForm, onRegisterSuccess }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.username) {
+    
+    if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
     }
-    if (!formData.email) {
+    
+    if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
+      newErrors.email = 'Email is invalid';
     }
+    
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    return newErrors;
+    
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newErrors = validateForm();
     
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (!validateForm()) {
       return;
     }
-
+    
     setIsLoading(true);
+    
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/register', formData);
+      const { confirmPassword, ...registerData } = formData;
+      const result = await register(registerData);
       
-      if (response.data.token) {
-        toast.success('Registration successful!');
-        onRegisterSuccess?.(response.data);
+      if (!result.success) {
+        throw new Error(result.error || 'Registration failed');
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed. Please try again.';
-      toast.error(message);
-      if (error.response?.status === 400) {
-        if (message.includes('username')) {
-          setErrors(prev => ({ ...prev, username: 'Username already exists' }));
-        }
-        if (message.includes('email')) {
-          setErrors(prev => ({ ...prev, email: 'Email already exists' }));
-        }
+      console.error('Registration error:', error);
+      if (error.response?.data?.message?.includes('email')) {
+        setErrors(prev => ({ ...prev, email: 'Email already exists' }));
+      } else if (error.response?.data?.message?.includes('username')) {
+        setErrors(prev => ({ ...prev, username: 'Username already taken' }));
       }
     } finally {
       setIsLoading(false);
@@ -132,36 +138,72 @@ const Register = ({ onToggleForm, onRegisterSuccess }) => {
         </div>
 
         <div className="relative">
-          <input
-            type={showPassword ? 'text' : 'password'}
-            name="password"
-            id="password"
-            value={formData.password}
-            onChange={handleChange}
-            className={`block w-full px-4 py-3 bg-dark-lighter text-white rounded-lg focus:ring-2 focus:ring-primary border-transparent focus:border-transparent ${
-              errors.password ? 'ring-2 ring-red-500' : ''
-            }`}
-            placeholder=" "
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              id="password"
+              value={formData.password}
+              onChange={handleChange}
+              className={`block w-full px-4 py-3 bg-dark-lighter text-white rounded-lg focus:ring-2 focus:ring-primary border-transparent focus:border-transparent ${
+                errors.password ? 'ring-2 ring-red-500' : ''
+              } pr-10`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 text-gray-400 hover:text-white"
+            >
+              {showPassword ? (
+                <EyeOffIcon className="h-5 w-5" />
+              ) : (
+                <EyeIcon className="h-5 w-5" />
+              )}
+            </button>
+          </div>
           <label
             htmlFor="password"
             className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-dark-lighter px-2 peer-focus:px-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 left-1"
           >
             Password
           </label>
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-          >
-            {showPassword ? (
-              <EyeSlashIcon className="h-5 w-5" />
-            ) : (
-              <EyeIcon className="h-5 w-5" />
-            )}
-          </button>
           {errors.password && (
             <p className="mt-1 text-sm text-red-500">{errors.password}</p>
+          )}
+        </div>
+
+        <div className="relative">
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              id="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className={`block w-full px-4 py-3 bg-dark-lighter text-white rounded-lg focus:ring-2 focus:ring-primary border-transparent focus:border-transparent ${
+                errors.confirmPassword ? 'ring-2 ring-red-500' : ''
+              } pr-10`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1 text-gray-400 hover:text-white"
+            >
+              {showConfirmPassword ? (
+                <EyeOffIcon className="h-5 w-5" />
+              ) : (
+                <EyeIcon className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+          <label
+            htmlFor="confirmPassword"
+            className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-dark-lighter px-2 peer-focus:px-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 left-1"
+          >
+            Confirm Password
+          </label>
+          {errors.confirmPassword && (
+            <p className="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>
           )}
         </div>
 
