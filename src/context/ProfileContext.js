@@ -17,6 +17,7 @@ export const ProfileProvider = ({ children }) => {
   const [profile, setProfile] = useState(null);
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchProfile = async () => {
     if (!isAuthenticated || !token) {
@@ -25,18 +26,28 @@ export const ProfileProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch profile: ${response.status}`);
       }
+
+      const data = await response.json();
+      setProfile(data.user);
+      setError(null);
     } catch (error) {
       console.error('Error fetching profile:', error);
+      setError(error.message);
+      setProfile(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,6 +119,7 @@ export const ProfileProvider = ({ children }) => {
     favorites,
     setFavorites,
     loading,
+    error,
     fetchProfile,
     fetchFavorites,
     checkIsFavorite,

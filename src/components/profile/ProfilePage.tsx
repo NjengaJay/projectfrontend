@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useProfile } from '../../context/ProfileContext';
-import ProfileHeader from './ProfileHeader';
-import AccessibilityPreferences from './AccessibilityPreferences';
-import FavoriteAccommodations from './FavoriteAccommodations';
-import BookingHistory from './BookingHistory';
+import ProfileHeader from './ProfileHeader.tsx';
+import AccessibilityPreferences from './AccessibilityPreferences.tsx';
+import FavoriteAccommodations from './FavoriteAccommodations.tsx';
+import BookingHistory from './BookingHistory.tsx';
 
 const tabs = [
   { id: 'preferences', label: 'Accessibility' },
