@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -61,8 +60,6 @@ const Register = ({ onToggleForm, onRegisterSuccess }) => {
       const response = await axios.post('http://localhost:8000/api/auth/register', formData);
       
       if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
         toast.success('Registration successful!');
         onRegisterSuccess?.(response.data);
       }
@@ -83,12 +80,7 @@ const Register = ({ onToggleForm, onRegisterSuccess }) => {
   };
 
   return (
-    <motion.div
-      initial={{ x: 300, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: -300, opacity: 0 }}
-      className="w-full max-w-sm mx-auto"
-    >
+    <div className="w-full max-w-sm mx-auto">
       <h2 className="text-3xl font-bold text-white mb-6">Create an account</h2>
       <p className="text-gray-400 mb-8">Please fill in your details to register</p>
 
@@ -209,7 +201,7 @@ const Register = ({ onToggleForm, onRegisterSuccess }) => {
           Sign in
         </button>
       </p>
-    </motion.div>
+    </div>
   );
 };
 
