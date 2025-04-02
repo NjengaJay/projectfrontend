@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Calendar, MapPin, Clock } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 interface Booking {
   id: number;
@@ -36,7 +37,7 @@ export default function BookingHistory() {
   const fetchBookings = async (page: number) => {
     try {
       setLoading(true);
-      const response = await axios.get<PaginatedResponse>(`/api/profile/bookings?page=${page}`);
+      const response = await axios.get<PaginatedResponse>(`${API_BASE_URL}/profile/bookings?page=${page}`);
       setBookings(response.data.items);
       setTotalPages(response.data.pages);
       setError(null);

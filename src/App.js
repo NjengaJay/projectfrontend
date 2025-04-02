@@ -8,6 +8,7 @@ import AccommodationList from './components/accommodation/AccommodationList';
 import AccommodationDetail from './components/accommodation/AccommodationDetail';
 import ChatPage from './pages/ChatPage';
 import NavBar from './components/navigation/NavBar';
+import ProfilePage from './components/profile/ProfilePageWrapper';
 import { accommodationService } from './services/accommodationService';
 import './App.css';
 
@@ -26,6 +27,14 @@ function App() {
 
   // Use ref to track if this is initial mount
   const isInitialMount = useRef(true);
+  
+  // Memoize filters to prevent unnecessary re-renders
+  const memoizedFilters = useRef(filters);
+  
+  // Update memoized filters when they change
+  useEffect(() => {
+    memoizedFilters.current = filters;
+  }, [filters]);
 
   const handleSearch = useCallback(async (searchTerm, searchFilters) => {
     if (loading) return;
@@ -51,28 +60,26 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, loading]);
+  }, [currentPage]); // Remove loading from dependencies
 
   const handleFilter = useCallback((newFilters) => {
     setFilters(newFilters);
     setCurrentPage(1); // Reset to first page when filters change
-    handleSearch('', newFilters);
-  }, [handleSearch]);
+  }, []); // Remove handleSearch dependency
 
-  // Combined effect for both initial load and page changes
+  // Separate effect for filter changes
   useEffect(() => {
-    if (isInitialMount.current) {
-      // Initial load
-      handleSearch('', filters);
-      isInitialMount.current = false;
+    handleSearch('', filters);
+  }, [filters, handleSearch]);
+
+  // Separate effect for page changes
+  useEffect(() => {
+    if (!isInitialMount.current) {
+      handleSearch('', memoizedFilters.current);
     } else {
-      // Subsequent page changes
-      const timeoutId = setTimeout(() => {
-        handleSearch('', filters);
-      }, 100); // Add small debounce
-      return () => clearTimeout(timeoutId);
+      isInitialMount.current = false;
     }
-  }, [currentPage, filters]); // Remove handleSearch from dependencies
+  }, [currentPage, handleSearch]);
 
   return (
     <Router>
@@ -83,6 +90,7 @@ function App() {
             <Routes>
               <Route path="/login" element={<AuthLayout />} />
               <Route path="/chat" element={<ChatPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/accommodation/:id" element={<AccommodationDetail />} />
               <Route
                 path="/"
@@ -102,15 +110,11 @@ function App() {
                     <AccommodationList 
                       accommodations={searchResults}
                       loading={loading}
-                      total={totalResults}
+                      error={error}
                       currentPage={currentPage}
+                      totalResults={totalResults}
                       onPageChange={setCurrentPage}
                     />
-                    {totalResults > 0 && (
-                      <div className="text-center text-gray-600 dark:text-gray-400 mt-4">
-                        Showing {searchResults.length} of {totalResults} results
-                      </div>
-                    )}
                   </div>
                 }
               />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config';
 
 interface Favorite {
   id: number;
@@ -34,7 +35,7 @@ export default function FavoriteAccommodations() {
   const fetchFavorites = async (page: number) => {
     try {
       setLoading(true);
-      const response = await axios.get<PaginatedResponse>(`/api/profile/favorites?page=${page}`);
+      const response = await axios.get<PaginatedResponse>(`${API_BASE_URL}/profile/favorites?page=${page}`);
       setFavorites(response.data.items);
       setTotalPages(response.data.pages);
       setError(null);
@@ -47,10 +48,9 @@ export default function FavoriteAccommodations() {
 
   const removeFavorite = async (id: number) => {
     try {
-      await axios.delete(`/api/profile/favorites/${id}`);
-      setFavorites(prevFavorites => 
-        prevFavorites.filter(favorite => favorite.accommodation_id !== id)
-      );
+      await axios.delete(`${API_BASE_URL}/profile/favorites/${id}`);
+      setFavorites(prevFavorites => prevFavorites.filter(favorite => favorite.id !== id));
+      setError(null);
     } catch (err) {
       setError('Failed to remove favorite');
     }
