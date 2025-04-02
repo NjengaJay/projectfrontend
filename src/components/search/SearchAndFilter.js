@@ -1,26 +1,48 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { debounce } from 'lodash';
 import { Search, Filter } from 'lucide-react';
 
-const SearchAndFilter = ({ onSearch, onFilter, loading }) => {
+const SearchAndFilter = ({ onSearch, onFilter, loading, initialFilters }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    min_price: '',
-    max_price: '',
-    accessibility: {
+    min_price: initialFilters?.min_price || '',
+    max_price: initialFilters?.max_price || '',
+    accessibility: initialFilters?.accessibility || {
       wheelchair_accessible: false,
       elevator_access: false,
       ground_floor: false,
       step_free_access: false
     },
-    type: {
+    type: initialFilters?.type || {
       hotel: false,
       apartment: false,
       hostel: false,
       guesthouse: false
     }
   });
+
+  // Update filters when initialFilters change
+  useEffect(() => {
+    if (initialFilters) {
+      setFilters({
+        min_price: initialFilters.min_price || '',
+        max_price: initialFilters.max_price || '',
+        accessibility: initialFilters.accessibility || {
+          wheelchair_accessible: false,
+          elevator_access: false,
+          ground_floor: false,
+          step_free_access: false
+        },
+        type: initialFilters.type || {
+          hotel: false,
+          apartment: false,
+          hostel: false,
+          guesthouse: false
+        }
+      });
+    }
+  }, [initialFilters]);
 
   // Debounce the search to avoid too many API calls
   const debouncedSearch = useCallback(
@@ -32,25 +54,29 @@ const SearchAndFilter = ({ onSearch, onFilter, loading }) => {
 
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
-    debouncedSearch(searchTerm, filters);
-  }, [searchTerm, filters, debouncedSearch]);
+    onSearch(searchTerm, filters);
+  }, [searchTerm, filters, onSearch]);
 
   const handleFilterChange = useCallback((category, key) => {
-    setFilters(prev => ({
-      ...prev,
+    const newFilters = {
+      ...filters,
       [category]: {
-        ...prev[category],
-        [key]: !prev[category][key]
+        ...filters[category],
+        [key]: !filters[category][key]
       }
-    }));
-  }, []);
+    };
+    setFilters(newFilters);
+    onFilter(newFilters);
+  }, [filters, onFilter]);
 
   const handlePriceChange = useCallback((type, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [type]: value
-    }));
-  }, []);
+    const newFilters = {
+      ...filters,
+      [type]: value === '' ? '' : Number(value)
+    };
+    setFilters(newFilters);
+    onFilter(newFilters);
+  }, [filters, onFilter]);
 
   const handleSearchChange = useCallback((e) => {
     const term = e.target.value;

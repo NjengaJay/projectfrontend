@@ -3,12 +3,13 @@ import { useProfile } from '../../context/ProfileContext';
 import ProfileHeader from './ProfileHeader.tsx';
 import AccessibilityPreferences from './AccessibilityPreferences.tsx';
 import FavoriteAccommodations from './FavoriteAccommodations.tsx';
-import BookingHistory from './BookingHistory.tsx';
+import ReservationHistory from './ReservationHistory.tsx';
+import { User, Home, Calendar } from 'lucide-react';
 
 const tabs = [
   { id: 'preferences', label: 'Accessibility' },
   { id: 'favorites', label: 'Favorites' },
-  { id: 'history', label: 'Booking History' }
+  { id: 'reservations', label: 'Reservations' }
 ] as const;
 
 type TabType = typeof tabs[number]['id'];
@@ -56,6 +57,9 @@ export default function ProfilePage() {
               `}
               onClick={() => setActiveTab(id)}
             >
+              {id === 'preferences' && <User className="w-5 h-5 mr-2" />}
+              {id === 'favorites' && <Home className="w-5 h-5 mr-2" />}
+              {id === 'reservations' && <Calendar className="w-5 h-5 mr-2" />}
               {label}
             </button>
           ))}
@@ -65,7 +69,7 @@ export default function ProfilePage() {
         <div className="mt-8" role="tabpanel" aria-labelledby={`${activeTab}-tab`}>
           {activeTab === 'preferences' && <AccessibilityPreferences />}
           {activeTab === 'favorites' && <FavoriteAccommodations />}
-          {activeTab === 'history' && <BookingHistory />}
+          {activeTab === 'reservations' && <ReservationHistory />}
         </div>
       </div>
     </div>

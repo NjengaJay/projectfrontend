@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { accommodationService } from '../../services/accommodationService';
 import { useProfile } from '../../context/ProfileContext';
 import FavoriteButton from '../common/FavoriteButton';
+import { API_BASE_URL } from '../../config';
 import { 
   Accessibility, 
   MapPin, 
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import axios from 'axios';
 
 const LoadingSkeleton = () => (
   <div className="animate-pulse">
@@ -47,15 +49,20 @@ const ErrorDisplay = ({ error, onRetry }) => (
   </div>
 );
 
-const PriceInfo = ({ priceRange, roomTypes, bookingConditions }) => {
+const PriceInfo = ({ priceRange, roomTypes, bookingConditions, accommodationId }) => {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [guests, setGuests] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
   
-  console.log('Price Range:', priceRange); // Debug log
-  console.log('Room Types:', roomTypes); // Debug log
+  // Reset success and error when dates or guests change
+  useEffect(() => {
+    setSuccess(false);
+    setError(null);
+  }, [startDate, endDate, guests]);
   
-  // Default to the minimum price from price_range, or first room type price, or 0
   const basePrice = priceRange?.min || 
                    (roomTypes && roomTypes[0]?.price) || 
                    (typeof priceRange === 'number' ? priceRange : 0);
@@ -67,9 +74,34 @@ const PriceInfo = ({ priceRange, roomTypes, bookingConditions }) => {
   const tax = subtotal * 0.21; // 21% VAT
   const total = subtotal + tax;
 
-  // Early return with debug message if no price data
+  const handleReserve = async () => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      
+      const reservationData = {
+        accommodation_id: accommodationId,
+        check_in: startDate.toISOString().split('T')[0],
+        check_out: endDate.toISOString().split('T')[0],
+        guests: guests,
+        total_price: total
+      };
+
+      await axios.post(`${API_BASE_URL}/reservations`, reservationData);
+      setSuccess(true);
+      
+      // Reset form
+      setStartDate(null);
+      setEndDate(null);
+      setGuests(1);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to create reservation');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (!priceRange && (!roomTypes || roomTypes.length === 0)) {
-    console.log('No price data available');
     return (
       <div className="bg-gray-900 rounded-lg p-6 sticky top-6">
         <h3 className="text-xl font-semibold text-white mb-4">Price Information Unavailable</h3>
@@ -81,6 +113,22 @@ const PriceInfo = ({ priceRange, roomTypes, bookingConditions }) => {
   return (
     <div className="bg-gray-900 rounded-lg p-6 sticky top-6">
       <h3 className="text-xl font-semibold text-white mb-4">Book Your Stay</h3>
+      
+      {/* Success Message */}
+      {success && (
+        <div className="mb-4 p-4 bg-green-500/20 border border-green-500/50 rounded-lg">
+          <p className="text-green-400">
+            Reservation successful! View it in your profile's reservations tab.
+          </p>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+          <p className="text-red-400">{error}</p>
+        </div>
+      )}
       
       {/* Price Range Display */}
       <div className="mb-6 p-4 bg-gray-800 rounded-lg">
@@ -122,6 +170,7 @@ const PriceInfo = ({ priceRange, roomTypes, bookingConditions }) => {
               minDate={new Date()}
               placeholderText="Check-in"
               className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg p-2"
+              disabled={isSubmitting}
             />
             <DatePicker
               selected={endDate}
@@ -132,6 +181,7 @@ const PriceInfo = ({ priceRange, roomTypes, bookingConditions }) => {
               minDate={startDate}
               placeholderText="Check-out"
               className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg p-2"
+              disabled={isSubmitting}
             />
           </div>
         </div>
@@ -142,37 +192,42 @@ const PriceInfo = ({ priceRange, roomTypes, bookingConditions }) => {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setGuests(Math.max(1, guests - 1))}
-              className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+              className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+              disabled={guests <= 1 || isSubmitting}
             >-</button>
             <span className="text-white px-4">{guests}</span>
             <button
               onClick={() => setGuests(Math.min(10, guests + 1))}
-              className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+              className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+              disabled={guests >= 10 || isSubmitting}
             >+</button>
           </div>
         </div>
 
         {/* Price Breakdown */}
-        <div className="space-y-2 border-t border-gray-800 pt-4 mt-4">
-          <div className="flex justify-between text-gray-300">
-            <span>€{basePrice} × {nights} nights</span>
-            <span>€{subtotal}</span>
+        {startDate && endDate && (
+          <div className="space-y-2 border-t border-gray-800 pt-4 mt-4">
+            <div className="flex justify-between text-gray-300">
+              <span>€{basePrice} × {nights} nights</span>
+              <span>€{subtotal}</span>
+            </div>
+            <div className="flex justify-between text-gray-300">
+              <span>VAT (21%)</span>
+              <span>€{tax.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-white font-bold pt-2 border-t border-gray-800">
+              <span>Total</span>
+              <span>€{total.toFixed(2)}</span>
+            </div>
           </div>
-          <div className="flex justify-between text-gray-300">
-            <span>VAT (21%)</span>
-            <span>€{tax.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between text-white font-bold pt-2 border-t border-gray-800">
-            <span>Total</span>
-            <span>€{total.toFixed(2)}</span>
-          </div>
-        </div>
+        )}
 
         <button
-          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors mt-4"
-          disabled={!startDate || !endDate}
+          onClick={handleReserve}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!startDate || !endDate || isSubmitting}
         >
-          Reserve Now
+          {isSubmitting ? 'Processing...' : 'Reserve Now'}
         </button>
 
         {/* Room Types */}
@@ -353,6 +408,7 @@ const AccommodationDetail = () => {
                 priceRange={accommodation.price_range}
                 roomTypes={accommodation.room_types}
                 bookingConditions={accommodation.booking_conditions}
+                accommodationId={accommodation.id}
               />
             </div>
           </div>

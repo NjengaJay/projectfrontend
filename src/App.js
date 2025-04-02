@@ -21,12 +21,21 @@ function App() {
   const [filters, setFilters] = useState({
     min_price: 0,
     max_price: 500,
-    accessibility: {},
-    type: {}
+    accessibility: {
+      wheelchair_accessible: false,
+      elevator_access: false,
+      ground_floor: false,
+      step_free_access: false
+    },
+    type: {
+      hotel: false,
+      apartment: false,
+      hostel: false,
+      guesthouse: false
+    }
   });
 
-  // Use ref to track if this is initial mount
-  const isInitialMount = useRef(true);
+  const loadingRef = useRef(false);
   
   // Memoize filters to prevent unnecessary re-renders
   const memoizedFilters = useRef(filters);
@@ -37,8 +46,9 @@ function App() {
   }, [filters]);
 
   const handleSearch = useCallback(async (searchTerm, searchFilters) => {
-    if (loading) return;
+    if (loadingRef.current) return;
     
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -52,34 +62,28 @@ function App() {
         page: currentPage,
         per_page: 10
       });
-      setSearchResults(data.accommodations || []);
+      setSearchResults(data.items || []); 
       setTotalResults(data.total || 0);
     } catch (err) {
       setError(err.message);
       setSearchResults([]);
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
-  }, [currentPage]); // Remove loading from dependencies
+  }, [currentPage]); 
 
   const handleFilter = useCallback((newFilters) => {
     setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, []); // Remove handleSearch dependency
+    setCurrentPage(1); 
+  }, []); 
 
-  // Separate effect for filter changes
+  // Effect for initial load and filter changes
   useEffect(() => {
-    handleSearch('', filters);
-  }, [filters, handleSearch]);
-
-  // Separate effect for page changes
-  useEffect(() => {
-    if (!isInitialMount.current) {
-      handleSearch('', memoizedFilters.current);
-    } else {
-      isInitialMount.current = false;
+    if (!loadingRef.current) {
+      handleSearch('', filters);
     }
-  }, [currentPage, handleSearch]);
+  }, [filters, handleSearch]);
 
   return (
     <Router>
@@ -101,18 +105,16 @@ function App() {
                     </h1>
                     <SearchAndFilter 
                       onSearch={handleSearch}
-                      onFilter={handleFilter}
+                      onFilter={handleFilter} 
+                      initialFilters={filters}
                       loading={loading}
                     />
-                    {error && (
-                      <div className="text-red-500 mb-4">{error}</div>
-                    )}
                     <AccommodationList 
                       accommodations={searchResults}
                       loading={loading}
                       error={error}
+                      total={totalResults}
                       currentPage={currentPage}
-                      totalResults={totalResults}
                       onPageChange={setCurrentPage}
                     />
                   </div>
