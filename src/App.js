@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProfileProvider } from './context/ProfileContext';
 import AuthLayout from './components/auth/AuthLayout';
+import AuthGuard from './components/auth/AuthGuard';
 import SearchAndFilter from './components/search/SearchAndFilter';
 import AccommodationList from './components/accommodation/AccommodationList';
 import AccommodationDetail from './components/accommodation/AccommodationDetail';
@@ -93,33 +94,41 @@ function App() {
             <NavBar />
             <Routes>
               <Route path="/login" element={<AuthLayout />} />
-              <Route path="/chat" element={<ChatPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/accommodation/:id" element={<AccommodationDetail />} />
-              <Route
-                path="/"
-                element={
-                  <div className="container mx-auto px-4 py-8">
-                    <h1 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">
-                      Find Your Perfect Stay
-                    </h1>
-                    <SearchAndFilter 
-                      onSearch={handleSearch}
-                      onFilter={handleFilter} 
-                      initialFilters={filters}
-                      loading={loading}
-                    />
-                    <AccommodationList 
-                      accommodations={searchResults}
-                      loading={loading}
-                      error={error}
-                      total={totalResults}
-                      currentPage={currentPage}
-                      onPageChange={setCurrentPage}
-                    />
-                  </div>
-                }
-              />
+              <Route path="/register" element={<AuthLayout isRegister />} />
+              
+              {/* Protected Routes */}
+              <Route element={<AuthGuard />}>
+                <Route path="/chat" element={<ChatPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/accommodation/:id" element={<AccommodationDetail />} />
+                <Route
+                  path="/"
+                  element={
+                    <div className="container mx-auto px-4 py-8">
+                      <h1 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">
+                        Find Your Perfect Stay
+                      </h1>
+                      <SearchAndFilter
+                        onSearch={handleSearch}
+                        onFilter={handleFilter}
+                        filters={filters}
+                        loading={loading}
+                      />
+                      <AccommodationList
+                        accommodations={searchResults}
+                        loading={loading}
+                        error={error}
+                        totalResults={totalResults}
+                        currentPage={currentPage}
+                        setCurrentPage={setCurrentPage}
+                      />
+                    </div>
+                  }
+                />
+              </Route>
+
+              {/* Catch all route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
         </ProfileProvider>

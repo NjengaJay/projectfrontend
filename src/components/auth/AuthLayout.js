@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Login from './Login';
 import Register from './Register';
@@ -23,17 +23,34 @@ const slideVariants = {
   })
 };
 
-const AuthLayout = () => {
+const AuthLayout = ({ isRegister }) => {
   const navigate = useNavigate();
-  const { login: authLogin } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
-  const [[page, direction], setPage] = useState([0, 0]);
+  const location = useLocation();
+  const { login: authLogin, register: authRegister, isAuthenticated } = useAuth();
+  const [isLogin, setIsLogin] = useState(!isRegister);
+  const [[page, direction], setPage] = useState([isRegister ? 1 : 0, 0]);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
 
   const toggleForm = () => {
     const newPage = page === 0 ? 1 : 0;
     const newDirection = page < newPage ? 1 : -1;
     setPage([newPage, newDirection]);
     setIsLogin(!isLogin);
+    
+    // Update URL without full page reload
+    navigate(isLogin ? '/register' : '/login', { replace: true });
+  };
+
+  const handleSuccess = () => {
+    const from = location.state?.from?.pathname || '/';
+    navigate(from, { replace: true });
   };
 
   return (
@@ -89,6 +106,7 @@ const AuthLayout = () => {
                 >
                   <Login
                     onToggleForm={toggleForm}
+                    onSuccess={handleSuccess}
                   />
                 </motion.div>
               ) : (
@@ -106,6 +124,7 @@ const AuthLayout = () => {
                 >
                   <Register
                     onToggleForm={toggleForm}
+                    onSuccess={handleSuccess}
                   />
                 </motion.div>
               )}

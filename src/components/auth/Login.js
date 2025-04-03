@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { EyeIcon, EyeOffIcon } from 'lucide-react';
+import LoadingSpinner from '../common/LoadingSpinner';
 
-const Login = ({ onToggleForm }) => {
+const Login = ({ onToggleForm, onSuccess }) => {
   const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -56,8 +57,10 @@ const Login = ({ onToggleForm }) => {
       if (!result.success) {
         throw new Error(result.error || 'Login failed');
       }
+      onSuccess?.();
     } catch (error) {
       console.error('Login error:', error);
+      setErrors({ submit: error.message });
     } finally {
       setIsLoading(false);
     }
@@ -131,28 +134,24 @@ const Login = ({ onToggleForm }) => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-3 px-4 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-colors duration-200 flex items-center justify-center"
+          className={`w-full py-3 px-4 rounded-lg font-semibold flex items-center justify-center space-x-2 ${
+            isLoading
+              ? 'bg-blue-600/50 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+          } text-white transition-colors`}
         >
           {isLoading ? (
-            <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
+            <>
+              <LoadingSpinner size="sm" light />
+              <span>Signing in...</span>
+            </>
           ) : (
             'Sign In'
           )}
         </button>
+        {errors.submit && (
+          <p className="mt-1 text-sm text-red-500">{errors.submit}</p>
+        )}
       </form>
 
       <p className="mt-8 text-center text-gray-400">

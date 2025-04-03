@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const AuthContext = createContext();
 
@@ -16,6 +17,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!token);
 
   // Set up axios interceptors for authentication
   useEffect(() => {
@@ -54,7 +56,9 @@ export function AuthProvider({ children }) {
   // Check token validity and load user data
   useEffect(() => {
     const validateToken = async () => {
+      setLoading(true);
       if (!token) {
+        setIsAuthenticated(false);
         setLoading(false);
         return;
       }
@@ -62,7 +66,7 @@ export function AuthProvider({ children }) {
       try {
         const response = await axios.get('http://localhost:8000/api/auth/validate');
         setUser(response.data.user);
-        toast.success('Welcome back!');
+        setIsAuthenticated(true);
       } catch (error) {
         console.error('Token validation failed:', error);
         toast.error('Session expired. Please login again.');
@@ -76,6 +80,7 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   const login = useCallback(async (credentials) => {
+    setLoading(true);
     try {
       const response = await axios.post('http://localhost:8000/api/auth/login', credentials);
       const { token: newToken, user: userData } = response.data;
@@ -84,6 +89,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('user', JSON.stringify(userData));
       setToken(newToken);
       setUser(userData);
+      setIsAuthenticated(true);
       
       toast.success('Logged in successfully!');
       return { success: true };
@@ -91,6 +97,8 @@ export function AuthProvider({ children }) {
       console.error('Login failed:', error);
       toast.error(error.response?.data?.message || 'Login failed');
       return { success: false, error: error.response?.data?.message };
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -103,6 +111,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('user', JSON.stringify(newUser));
       setToken(newToken);
       setUser(newUser);
+      setIsAuthenticated(true);
       
       toast.success('Registration successful!');
       return { success: true };
@@ -118,6 +127,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
+    setIsAuthenticated(false);
     toast.success('Logged out successfully');
   }, []);
 
@@ -129,29 +139,25 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   const value = {
-    token,
     user,
-    loading,
+    token,
     login,
     logout,
     register,
     updateUser,
-    isAuthenticated: !!token,
+    loading,
+    isAuthenticated,
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-dark">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <LoadingSpinner size="lg" light />
       </div>
     );
   }
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export default AuthContext;
