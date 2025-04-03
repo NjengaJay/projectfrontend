@@ -139,7 +139,7 @@ const ReservationHistory: React.FC = () => {
                   {reservation.accommodation.name}
                 </h3>
                 <span className={`px-3 py-1 rounded-full text-sm ${
-                  reservation.status === 'active' 
+                  ['active', 'confirmed'].includes(reservation.status)
                     ? 'bg-green-500/20 text-green-400'
                     : 'bg-red-500/20 text-red-400'
                 }`}>
@@ -169,7 +169,7 @@ const ReservationHistory: React.FC = () => {
                   <span className="text-gray-400">Total Price:</span>
                   <span className="ml-2 text-xl font-semibold">€{reservation.total_price}</span>
                 </div>
-                {reservation.status === 'active' && (
+                {['active', 'confirmed'].includes(reservation.status) && (
                   <button
                     onClick={() => cancelReservation(reservation.id)}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"

@@ -53,38 +53,95 @@ const PriceInfo = ({ priceRange, roomTypes, bookingConditions, accommodationId }
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [guests, setGuests] = useState(1);
+  const [selectedRoomType, setSelectedRoomType] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  
-  // Reset success and error when dates or guests change
+
+  // Reset success and error when dates, guests, or room type change
   useEffect(() => {
     setSuccess(false);
     setError(null);
-  }, [startDate, endDate, guests]);
-  
-  const basePrice = priceRange?.min || 
-                   (roomTypes && roomTypes[0]?.price) || 
-                   (typeof priceRange === 'number' ? priceRange : 0);
-  
-  const nights = startDate && endDate 
-    ? Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))
-    : 0;
-  const subtotal = basePrice * nights;
-  const tax = subtotal * 0.21; // 21% VAT
-  const total = subtotal + tax;
+  }, [startDate, endDate, guests, selectedRoomType]);
+
+  // Safely parse room types and ensure they have required properties
+  const safeRoomTypes = React.useMemo(() => {
+    try {
+      if (!roomTypes) return [];
+      const parsed = Array.isArray(roomTypes) ? roomTypes : JSON.parse(roomTypes);
+      return parsed.filter(room => 
+        room && 
+        typeof room.type === 'string' && 
+        typeof room.price === 'number' && 
+        typeof room.capacity === 'number'
+      );
+    } catch (e) {
+      console.error('Error parsing room types:', e);
+      return [];
+    }
+  }, [roomTypes]);
+
+  // Calculate price with room type consideration
+  const calculatePrice = React.useCallback(() => {
+    const nights = startDate && endDate 
+      ? Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))
+      : 0;
+
+    // If no room type is selected or no valid room types, use default pricing
+    if (!selectedRoomType && safeRoomTypes.length === 0) {
+      const basePrice = priceRange?.min || 
+                       (typeof priceRange === 'number' ? priceRange : 0);
+      const subtotal = basePrice * nights;
+      const tax = subtotal * 0.21;
+      return {
+        basePrice,
+        guestSurcharge: 0,
+        subtotal,
+        tax,
+        total: subtotal + tax,
+        nights
+      };
+    }
+
+    // Use selected room type or first available room type
+    const roomType = selectedRoomType || safeRoomTypes[0];
+    const basePrice = roomType.price;
+    const guestSurcharge = guests > roomType.capacity 
+      ? (guests - roomType.capacity) * (basePrice * 0.25)
+      : 0;
+    const subtotal = (basePrice + guestSurcharge) * nights;
+    const tax = subtotal * 0.21;
+
+    return {
+      basePrice,
+      guestSurcharge,
+      subtotal,
+      tax,
+      total: subtotal + tax,
+      nights
+    };
+  }, [startDate, endDate, guests, selectedRoomType, safeRoomTypes, priceRange]);
+
+  const priceDetails = calculatePrice();
 
   const handleReserve = async () => {
     try {
       setIsSubmitting(true);
       setError(null);
       
+      // Validate room selection if room types are available
+      if (safeRoomTypes.length > 0 && !selectedRoomType) {
+        setError('Please select a room type');
+        return;
+      }
+
       const reservationData = {
         accommodation_id: accommodationId,
         check_in: startDate.toISOString().split('T')[0],
         check_out: endDate.toISOString().split('T')[0],
         guests: guests,
-        total_price: total
+        total_price: priceDetails.total,
+        room_type: selectedRoomType?.type
       };
 
       await axios.post(`${API_BASE_URL}/reservations`, reservationData);
@@ -94,6 +151,7 @@ const PriceInfo = ({ priceRange, roomTypes, bookingConditions, accommodationId }
       setStartDate(null);
       setEndDate(null);
       setGuests(1);
+      setSelectedRoomType(null);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create reservation');
     } finally {
@@ -150,7 +208,7 @@ const PriceInfo = ({ priceRange, roomTypes, bookingConditions, accommodationId }
           ) : (
             <div className="flex justify-between items-center">
               <span className="text-gray-300">Price</span>
-              <span className="text-2xl font-bold text-green-500">€{basePrice}</span>
+              <span className="text-2xl font-bold text-green-500">€{priceRange}</span>
             </div>
           )}
         </div>
@@ -186,79 +244,101 @@ const PriceInfo = ({ priceRange, roomTypes, bookingConditions, accommodationId }
           </div>
         </div>
 
+        {/* Room Type Selection */}
+        {safeRoomTypes.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Room Type
+            </label>
+            <select
+              value={selectedRoomType?.type || ''}
+              onChange={(e) => {
+                const selected = safeRoomTypes.find(room => room.type === e.target.value);
+                setSelectedRoomType(selected || null);
+              }}
+              className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select a room type</option>
+              {safeRoomTypes.map((room) => (
+                <option 
+                  key={room.type} 
+                  value={room.type}
+                  disabled={guests > room.capacity * 2} // Allow up to double capacity with surcharge
+                >
+                  {room.type} (Max {room.capacity} guests) - €{room.price}/night
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Guest Selection */}
         <div>
-          <label className="block text-gray-300 mb-2">Guests</label>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setGuests(Math.max(1, guests - 1))}
-              className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-              disabled={guests <= 1 || isSubmitting}
-            >-</button>
-            <span className="text-white px-4">{guests}</span>
-            <button
-              onClick={() => setGuests(Math.min(10, guests + 1))}
-              className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-              disabled={guests >= 10 || isSubmitting}
-            >+</button>
-          </div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Number of Guests
+          </label>
+          <input
+            type="number"
+            min="1"
+            max={selectedRoomType ? selectedRoomType.capacity * 2 : 10}
+            value={guests}
+            onChange={(e) => setGuests(Math.max(1, parseInt(e.target.value) || 1))}
+            className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {selectedRoomType && guests > selectedRoomType.capacity && (
+            <p className="text-yellow-500 text-sm mt-1">
+              Additional guest fee applies above {selectedRoomType.capacity} guests
+            </p>
+          )}
         </div>
 
         {/* Price Breakdown */}
-        {startDate && endDate && (
-          <div className="space-y-2 border-t border-gray-800 pt-4 mt-4">
+        {priceDetails.nights > 0 && (
+          <div className="space-y-2 border-t border-gray-700 pt-4">
             <div className="flex justify-between text-gray-300">
-              <span>€{basePrice} × {nights} nights</span>
-              <span>€{subtotal}</span>
+              <span>Base Price (per night)</span>
+              <span>€{priceDetails.basePrice.toFixed(2)}</span>
+            </div>
+            {priceDetails.guestSurcharge > 0 && (
+              <div className="flex justify-between text-gray-300">
+                <span>Additional Guest Fee</span>
+                <span>€{priceDetails.guestSurcharge.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-gray-300">
+              <span>Subtotal ({priceDetails.nights} nights)</span>
+              <span>€{priceDetails.subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-gray-300">
               <span>VAT (21%)</span>
-              <span>€{tax.toFixed(2)}</span>
+              <span>€{priceDetails.tax.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-white font-bold pt-2 border-t border-gray-800">
+            <div className="flex justify-between text-white font-semibold text-lg">
               <span>Total</span>
-              <span>€{total.toFixed(2)}</span>
+              <span>€{priceDetails.total.toFixed(2)}</span>
             </div>
           </div>
+        )}
+
+        {error && (
+          <div className="text-red-500 text-sm">{error}</div>
+        )}
+        
+        {success && (
+          <div className="text-green-500 text-sm">Reservation successful!</div>
         )}
 
         <button
           onClick={handleReserve}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={!startDate || !endDate || isSubmitting}
+          disabled={!startDate || !endDate || isSubmitting || (safeRoomTypes.length > 0 && !selectedRoomType)}
+          className={`w-full py-3 rounded-lg font-semibold ${
+            (!startDate || !endDate || isSubmitting || (safeRoomTypes.length > 0 && !selectedRoomType))
+              ? 'bg-gray-600 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+          } text-white transition-colors`}
         >
           {isSubmitting ? 'Processing...' : 'Reserve Now'}
         </button>
-
-        {/* Room Types */}
-        {roomTypes && roomTypes.length > 0 && (
-          <div className="mt-6 border-t border-gray-800 pt-4">
-            <h4 className="text-lg font-medium text-white mb-3">Available Room Types</h4>
-            <div className="space-y-2">
-              {roomTypes.map((room, index) => (
-                <div key={index} className="flex justify-between items-center py-2 border-b border-gray-700">
-                  <span className="text-gray-300">{room.type}</span>
-                  <span className="text-white font-medium">€{room.price}/night</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Booking Conditions */}
-        {bookingConditions && bookingConditions.length > 0 && (
-          <div className="mt-6 border-t border-gray-800 pt-4">
-            <h4 className="text-lg font-medium text-white mb-3">Booking Conditions</h4>
-            <ul className="space-y-2 text-sm text-gray-300">
-              {bookingConditions.map((condition, index) => (
-                <li key={index} className="flex items-start">
-                  <Info className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                  <span>{condition}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );
